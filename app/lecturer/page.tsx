@@ -1,156 +1,82 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-type Course = { id: string; code: string; title: string };
-type Material = {
-  id: string;
-  title: string;
-  type: string;
-  course_code: string;
-  created_at: string;
-};
-
 export default function LecturerDashboard() {
-  const { user, token, loading, logout } = useAuth();
   const router = useRouter();
+  const { user, token, logout } = useAuth();
 
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [fetching, setFetching] = useState(true);
 
-  const [courseId, setCourseId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState("note");
+  const [type, setType] = useState("notes");
   const [topic, setTopic] = useState("");
+  const [courseId, setCourseId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!loading && (!user || (user.role !== "lecturer" && user.role !== "admin"))) {
-      router.push("/login");
+    async function fetchCourses() {
+      try {
+        const res = await fetch("/api/lecturer/courses", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setCourses(data.courses || []);
+      } catch (err) {
+        console.error("Failed to fetch courses", err);
+      } finally {
+        setFetching(false);
+      }
     }
-  }, [user, loading, router]);
-
-  useEffect(() => {
-    if (!token) return;
-    loadData();
+    if (token) fetchCourses();
   }, [token]);
 
-  async function loadData() {
-    setFetching(true);
-    try {
-      const [coursesRes, materialsRes] = await Promise.all([
-        fetch("/api/lecturer/courses", { headers: { Authorization: `Bearer ${token}` } }),
-        fetch("/api/materials", { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      const coursesData = await coursesRes.json();
-      const materialsData = await materialsRes.json();
-      setCourses(coursesData.courses || []);
-      setMaterials(materialsData.materials || []);
-      if (coursesData.courses?.length > 0 && !courseId) {
-        setCourseId(coursesData.courses[0].id);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setFetching(false);
-    }
-  }
-
-  async function handleUpload(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setMessage("");
-
-    if (!file) {
-      setError("Please choose a file to upload.");
-      return;
-    }
-    if (!courseId) {
-      setError("Please select a course.");
-      return;
-    }
-
+    if (!file || !courseId) return;
     setUploading(true);
     try {
-      // Step 1: upload the file itself
       const formData = new FormData();
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("type", type);
+      formData.append("topic", topic);
+      formData.append("courseId", courseId);
       formData.append("file", file);
 
-      const uploadRes = await fetch("/api/upload", {
+      const res = await fetch("/api/materials", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
-      const uploadData = await uploadRes.json();
 
-      if (!uploadRes.ok) {
-        setError(uploadData.error || "Upload failed.");
-        setUploading(false);
-        return;
-      }
+      if (!res.ok) throw new Error("Upload failed");
 
-      // Step 2: save the material record
-      const materialRes = await fetch("/api/materials", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          courseId,
-          title,
-          description,
-          type,
-          topic,
-          fileUrl: uploadData.fileUrl,
-          fileSize: uploadData.fileSize,
-          fileMime: uploadData.fileMime,
-        }),
-      });
-      const materialData = await materialRes.json();
-
-      if (!materialRes.ok) {
-        setError(materialData.error || "Could not save material.");
-        setUploading(false);
-        return;
-      }
-
-      setMessage("Material uploaded successfully.");
       setTitle("");
       setDescription("");
       setTopic("");
+      setCourseId("");
       setFile(null);
-      loadData();
+      alert("Material uploaded successfully.");
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      console.error(err);
+      alert("Something went wrong uploading the material.");
     } finally {
       setUploading(false);
     }
   }
 
-  if (loading || !user) {
-    return (
-      <main className="min-h-screen bg-[#FAF8F4] flex items-center justify-center">
-        <p className="text-[#1B2A4A]/50">Loading…</p>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-[#FAF8F4]">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-[#1B2A4A]/10 bg-white">
-        <div className="font-display text-lg font-bold text-[#1B2A4A]">
-          StudyHub<span className="text-[#C89B3C]">AI</span>
-        </div>
+    <div>
+      <header className="flex justify-between items-center px-6 py-4 border-b border-[#1B2A4A]/10">
+        <div className="font-display text-lg font-bold text-[#1B2A4A]">StudyHub AI</div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-[#1B2A4A]/70">{user.full_name}</span>
+          <span className="text-sm text-[#1B2A4A]/70">{user?.full_name}</span>
           <button
             onClick={() => {
               logout();
@@ -172,4 +98,91 @@ export default function LecturerDashboard() {
         </p>
 
         {courses.length === 0 && !fetching && (
-          <div className="p-4 mb-6 bg-[#C15B3E]/10
+          <div className="p-4 mb-6 bg-[#C15B3E]/10 border border-[#C15B3E]/30 rounded-lg text-[#C15B3E] text-sm">
+            You aren't assigned to any courses yet. Contact an admin to get set up before uploading material.
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1">Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              className="w-full border border-[#1B2A4A]/20 rounded-lg px-3 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full border border-[#1B2A4A]/20 rounded-lg px-3 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1">Type</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="w-full border border-[#1B2A4A]/20 rounded-lg px-3 py-2"
+            >
+              <option value="notes">Notes</option>
+              <option value="slides">Slides</option>
+              <option value="past_paper">Past Paper</option>
+              <option value="assignment">Assignment</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1">Topic</label>
+            <input
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="w-full border border-[#1B2A4A]/20 rounded-lg px-3 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1">Course</label>
+            <select
+              value={courseId}
+              onChange={(e) => setCourseId(e.target.value)}
+              required
+              className="w-full border border-[#1B2A4A]/20 rounded-lg px-3 py-2"
+            >
+              <option value="">Select a course</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1">File</label>
+            <input
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              required
+              className="w-full"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={uploading}
+            className="bg-[#1B2A4A] text-white px-5 py-2 rounded-lg font-medium disabled:opacity-50"
+          >
+            {uploading ? "Uploading..." : "Upload material"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
