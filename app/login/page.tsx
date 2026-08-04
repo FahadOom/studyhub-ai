@@ -94,5 +94,12 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-sm text-[#1B2A4A]/70 mt-6">
-          Don't ha
-
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="text-[#C89B3C] font-medium">
+            Create one
+          </Link>
+        </p>
+      </div>
+    </main>
+  );
+}
