@@ -1,118 +1,43 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { verifyToken } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next";
+import { supabaseAdmin } from "@lib/supabase";
+import { verifyToken } from "@lib/auth";
 
-async function requireAdmin(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
-  }
-
-  const token = authHeader.replace("Bearer ", "");
-
+async function auth(req: NextRequest) {
+  const h = req.headers.get("Authorization");
+  if (!h) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
+    const token = h.replace("Bearer ", "");
     const payload = verifyToken(token);
-
-    if (payload.role !== "admin") {
-      return null;
-    }
-
+    if (payload.role !== "admin") throw new Error();
     return payload;
   } catch {
-    return null;
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 }
 
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin(req);
-
-  if (!admin) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
-
+  const admin = await auth(req);
+  if (admin instanceof NextResponse) return admin;
   const { data, error } = await supabaseAdmin
     .from("courses")
-    .select(`
-      *,
-      departments (
-        id,
-        name,
-        faculties (
-          id,
-          name
-        )
-      )
-    `)
-    .order("code", { ascending: true });
-
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 400 }
-    );
-  }
-
-  return NextResponse.json({ courses: data });
+    .select(`*, department:departments (id, name, faculty:faculties (id, name))`)
+    .order("code");
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
 export async function POST(req: NextRequest) {
-  const admin = await requireAdmin(req);
-
-  if (!admin) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
-
+  const admin = await auth(req);
+  if (admin instanceof NextResponse) return admin;
   const body = await req.json();
-
-  const {
-    code,
-    title,
-    description,
-    year_of_study,
-    semester,
-    department_id,
-  } = body;
-
-  if (!code || !title || !department_id) {
-    return NextResponse.json(
-      {
-        error: "Course code, title and department are required.",
-      },
-      { status: 400 }
-    );
+  if (!body.department_id || !body.code || !body.title) {
+    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
-
   const { data, error } = await supabaseAdmin
     .from("courses")
-    .insert([
-      {
-        code,
-        title,
-        description: description || null,
-        year_of_study: year_of_study || null,
-        semester: semester || null,
-        department_id,
-      },
-    ])
+    .insert({ ...body, code: body.code.toUpperCase().trim(), created_by: admin.id })
     .select()
     .single();
-
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 400 }
-    );
-  }
-
-  return NextResponse.json(
-    { course: data },
-    { status: 201 }
-  );
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data, { status: 201 });
 }

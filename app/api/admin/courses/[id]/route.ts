@@ -1,75 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { verifyToken } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next";
+import { supabaseAdmin } from "@lib/supabase";
+import { verifyToken } from "@lib/auth";
 
-async function requireAdmin(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  const token = authHeader.replace("Bearer ", "");
+async function auth(req: NextRequest) {
+  const h = req.headers.get("Authorization");
+  if (!h) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
+    const token = h.replace("Bearer ", "");
     const payload = verifyToken(token);
-    if (payload.role !== "admin") return null;
+    if (payload.role !== "admin") throw new Error();
     return payload;
   } catch {
-    return null;
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const admin = await requireAdmin(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await auth(req);
+  if (admin instanceof NextResponse) return admin;
   const { id } = await params;
   const body = await req.json();
-  const allowedFields = ["code", "title", "description", "year_of_study", "semester", "department_id"];
-  const updates: Record<string, any> = {};
-
-  for (const field of allowedFields) {
-    if (body[field] !== undefined) updates[field] = body[field];
-  }
-
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
-  }
-
   const { data, error } = await supabaseAdmin
     .from("courses")
-    .update(updates)
+    .update(body)
     .eq("id", id)
     .select()
     .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  return NextResponse.json({ course: data });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(data);
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const admin = await requireAdmin(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await auth(req);
+  if (admin instanceof NextResponse) return admin;
   const { id } = await params;
-
-  const { error } = await supabaseAdmin
-    .from("courses")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
+  const { error } = await supabaseAdmin.from("courses").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
