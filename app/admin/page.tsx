@@ -1,3 +1,6 @@
+
+
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,10 +15,16 @@ type User = {
   status: string;
 };
 
+type Faculty = {
+  id: string;
+  name: string;
+  description: string | null;
+};
+
 const NAV_ITEMS = [
   { key: "users", label: "Users", enabled: true },
+  { key: "faculties", label: "Faculties", enabled: true },
   { key: "courses", label: "Courses", enabled: false },
-  { key: "faculties", label: "Faculties", enabled: false },
   { key: "announcements", label: "Announcements", enabled: false },
 ];
 
@@ -24,11 +33,24 @@ const ROLE_OPTIONS = ["student", "lecturer", "admin"];
 export default function AdminDashboard() {
   const { user, token } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("users");
+
+  // Users state
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  // Faculties state
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
+  const [facLoading, setFacLoading] = useState(true);
+  const [facError, setFacError] = useState("");
+  const [newFacName, setNewFacName] = useState("");
+  const [newFacDesc, setNewFacDesc] = useState("");
+  const [creatingFac, setCreatingFac] = useState(false);
+  const [editingFacId, setEditingFacId] = useState<string | null>(null);
+  const [editFacName, setEditFacName] = useState("");
+  const [editFacDesc, setEditFacDesc] = useState("");
 
   useEffect(() => {
     if (user && user.role !== "admin") {
@@ -36,8 +58,10 @@ export default function AdminDashboard() {
       return;
     }
     fetchUsers();
+    fetchFaculties();
   }, [user]);
 
+  // --- Users ---
   async function fetchUsers() {
     try {
       const res = await fetch("/api/admin/users", {
@@ -47,9 +71,9 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(data.error || "Failed to load users");
       setUsers(data.users);
     } catch (err: any) {
-      setError(err.message);
+      setUsersError(err.message);
     } finally {
-      setLoading(false);
+      setUsersLoading(false);
     }
   }
 
@@ -76,6 +100,72 @@ export default function AdminDashboard() {
     });
     if (res.ok) await fetchUsers();
     setSavingId(null);
+  }
+
+  // --- Faculties ---
+  async function fetchFaculties() {
+    try {
+      const res = await fetch("/api/admin/faculties", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load faculties");
+      setFaculties(data.faculties);
+    } catch (err: any) {
+      setFacError(err.message);
+    } finally {
+      setFacLoading(false);
+    }
+  }
+
+  async function createFaculty(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newFacName.trim()) return;
+    setCreatingFac(true);
+    const res = await fetch("/api/admin/faculties", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: newFacName, description: newFacDesc }),
+    });
+    if (res.ok) {
+      setNewFacName("");
+      setNewFacDesc("");
+      await fetchFaculties();
+    }
+    setCreatingFac(false);
+  }
+
+  function startEditFaculty(f: Faculty) {
+    setEditingFacId(f.id);
+    setEditFacName(f.name);
+    setEditFacDesc(f.description || "");
+  }
+
+  async function saveEditFaculty(id: string) {
+    const res = await fetch(`/api/admin/faculties/${id}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: editFacName, description: editFacDesc }),
+    });
+    if (res.ok) {
+      setEditingFacId(null);
+      await fetchFaculties();
+    }
+  }
+
+  async function deleteFaculty(id: string) {
+    if (!confirm("Delete this faculty permanently?")) return;
+    const res = await fetch(`/api/admin/faculties/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) await fetchFaculties();
   }
 
   const statusStyles: Record<string, string> = {
@@ -125,109 +215,228 @@ export default function AdminDashboard() {
       {/* Main content */}
       <main className="flex-1 px-5 py-8 sm:px-10">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-[#1B2A4A]">User Management</h1>
-            <p className="text-sm text-[#1B2A4A]/50 mt-1">
-              Approve lecturers, manage roles, and control account access.
-            </p>
-          </div>
+          {activeTab === "users" && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-2xl font-bold text-[#1B2A4A]">User Management</h1>
+                <p className="text-sm text-[#1B2A4A]/50 mt-1">
+                  Approve lecturers, manage roles, and control account access.
+                </p>
+              </div>
 
-          {loading && (
-            <div className="text-[#1B2A4A]/50 text-sm">Loading users...</div>
+              {usersLoading && (
+                <div className="text-[#1B2A4A]/50 text-sm">Loading users...</div>
+              )}
+
+              {usersError && (
+                <div className="p-4 rounded-lg bg-rose-50 text-rose-700 text-sm ring-1 ring-rose-200">
+                  {usersError}
+                </div>
+              )}
+
+              {!usersLoading && !usersError && (
+                <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-black/5 bg-[#1B2A4A]/[0.02]">
+                          <th className="text-left font-semibold text-[#1B2A4A]/60 px-6 py-3">Name</th>
+                          <th className="text-left font-semibold text-[#1B2A4A]/60 px-6 py-3">Email</th>
+                          <th className="text-left font-semibold text-[#1B2A4A]/60 px-6 py-3">Role</th>
+                          <th className="text-left font-semibold text-[#1B2A4A]/60 px-6 py-3">Status</th>
+                          <th className="text-right font-semibold text-[#1B2A4A]/60 px-6 py-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((u) => (
+                          <tr
+                            key={u.id}
+                            className="border-b border-black/5 last:border-0 hover:bg-[#1B2A4A]/[0.015] transition"
+                          >
+                            <td className="px-6 py-4 font-medium text-[#1B2A4A]">{u.full_name}</td>
+                            <td className="px-6 py-4 text-[#1B2A4A]/70">{u.email}</td>
+                            <td className="px-6 py-4">
+                              <select
+                                value={u.role}
+                                disabled={savingId === u.id}
+                                onChange={(e) => updateUser(u.id, { role: e.target.value })}
+                                className={`text-xs font-semibold px-2.5 py-1.5 rounded-full border-0 outline-none cursor-pointer ${roleStyles[u.role] || "bg-slate-100 text-slate-600"}`}
+                              >
+                                {ROLE_OPTIONS.map((r) => (
+                                  <option key={r} value={r}>
+                                    {r}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[u.status] || "bg-slate-100 text-slate-600"}`}
+                              >
+                                {u.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex justify-end gap-2 flex-wrap">
+                                {u.status === "pending" && (
+                                  <button
+                                    onClick={() => updateUser(u.id, { status: "active" })}
+                                    disabled={savingId === u.id}
+                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition disabled:opacity-50"
+                                  >
+                                    Approve
+                                  </button>
+                                )}
+                                {u.status === "active" && (
+                                  <button
+                                    onClick={() => updateUser(u.id, { status: "suspended" })}
+                                    disabled={savingId === u.id}
+                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition disabled:opacity-50"
+                                  >
+                                    Suspend
+                                  </button>
+                                )}
+                                {u.status === "suspended" && (
+                                  <button
+                                    onClick={() => updateUser(u.id, { status: "active" })}
+                                    disabled={savingId === u.id}
+                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition disabled:opacity-50"
+                                  >
+                                    Reactivate
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => deleteUser(u.id)}
+                                  disabled={savingId === u.id}
+                                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition disabled:opacity-50"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
-          {error && (
-            <div className="p-4 rounded-lg bg-rose-50 text-rose-700 text-sm ring-1 ring-rose-200">
-              {error}
-            </div>
-          )}
+          {activeTab === "faculties" && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-2xl font-bold text-[#1B2A4A]">Faculties</h1>
+                <p className="text-sm text-[#1B2A4A]/50 mt-1">
+                  Create and manage the faculties in your institution.
+                </p>
+              </div>
 
-          {!loading && !error && (
-            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-black/5 bg-[#1B2A4A]/[0.02]">
-                      <th className="text-left font-semibold text-[#1B2A4A]/60 px-6 py-3">Name</th>
-                      <th className="text-left font-semibold text-[#1B2A4A]/60 px-6 py-3">Email</th>
-                      <th className="text-left font-semibold text-[#1B2A4A]/60 px-6 py-3">Role</th>
-                      <th className="text-left font-semibold text-[#1B2A4A]/60 px-6 py-3">Status</th>
-                      <th className="text-right font-semibold text-[#1B2A4A]/60 px-6 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((u) => (
-                      <tr
-                        key={u.id}
-                        className="border-b border-black/5 last:border-0 hover:bg-[#1B2A4A]/[0.015] transition"
-                      >
-                        <td className="px-6 py-4 font-medium text-[#1B2A4A]">{u.full_name}</td>
-                        <td className="px-6 py-4 text-[#1B2A4A]/70">{u.email}</td>
-                        <td className="px-6 py-4">
-                          <select
-                            value={u.role}
-                            disabled={savingId === u.id}
-                            onChange={(e) => updateUser(u.id, { role: e.target.value })}
-                            className={`text-xs font-semibold px-2.5 py-1.5 rounded-full border-0 outline-none cursor-pointer ${roleStyles[u.role] || "bg-slate-100 text-slate-600"}`}
-                          >
-                            {ROLE_OPTIONS.map((r) => (
-                              <option key={r} value={r}>
-                                {r}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[u.status] || "bg-slate-100 text-slate-600"}`}
-                          >
-                            {u.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex justify-end gap-2 flex-wrap">
-                            {u.status === "pending" && (
-                              <button
-                                onClick={() => updateUser(u.id, { status: "active" })}
-                                disabled={savingId === u.id}
-                                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition disabled:opacity-50"
-                              >
-                                Approve
-                              </button>
-                            )}
-                            {u.status === "active" && (
-                              <button
-                                onClick={() => updateUser(u.id, { status: "suspended" })}
-                                disabled={savingId === u.id}
-                                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition disabled:opacity-50"
-                              >
-                                Suspend
-                              </button>
-                            )}
-                            {u.status === "suspended" && (
-                              <button
-                                onClick={() => updateUser(u.id, { status: "active" })}
-                                disabled={savingId === u.id}
-                                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition disabled:opacity-50"
-                              >
-                                Reactivate
-                              </button>
-                            )}
+              <form
+                onSubmit={createFaculty}
+                className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-6 mb-6 flex flex-col sm:flex-row gap-3"
+              >
+                <input
+                  type="text"
+                  placeholder="Faculty name"
+                  value={newFacName}
+                  onChange={(e) => setNewFacName(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+                />
+                <input
+                  type="text"
+                  placeholder="Description (optional)"
+                  value={newFacDesc}
+                  onChange={(e) => setNewFacDesc(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+                />
+                <button
+                  type="submit"
+                  disabled={creatingFac || !newFacName.trim()}
+                  className="px-4 py-2 rounded-lg bg-[#1B2A4A] text-white text-sm font-medium disabled:opacity-50"
+                >
+                  {creatingFac ? "Adding..." : "Add Faculty"}
+                </button>
+              </form>
+
+              {facLoading && (
+                <div className="text-[#1B2A4A]/50 text-sm">Loading faculties...</div>
+              )}
+
+              {facError && (
+                <div className="p-4 rounded-lg bg-rose-50 text-rose-700 text-sm ring-1 ring-rose-200">
+                  {facError}
+                </div>
+              )}
+
+              {!facLoading && !facError && (
+                <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 divide-y divide-black/5">
+                  {faculties.length === 0 && (
+                    <div className="p-6 text-sm text-[#1B2A4A]/50">
+                      No faculties yet. Add one above.
+                    </div>
+                  )}
+                  {faculties.map((f) => (
+                    <div key={f.id} className="p-5">
+                      {editingFacId === f.id ? (
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <input
+                            value={editFacName}
+                            onChange={(e) => setEditFacName(e.target.value)}
+                            className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
+                          />
+                          <input
+                            value={editFacDesc}
+                            onChange={(e) => setEditFacDesc(e.target.value)}
+                            className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
+                          />
+                          <div className="flex gap-2">
                             <button
-                              onClick={() => deleteUser(u.id)}
-                              disabled={savingId === u.id}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition disabled:opacity-50"
+                              onClick={() => saveEditFaculty(f.id)}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingFacId(null)}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <div className="font-medium text-[#1B2A4A]">{f.name}</div>
+                            {f.description && (
+                              <div className="text-sm text-[#1B2A4A]/50 mt-0.5">
+                                {f.description}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              onClick={() => startEditFaculty(f)}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteFaculty(f.id)}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
                             >
                               Delete
                             </button>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
