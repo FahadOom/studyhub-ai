@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next";
-import { supabaseAdmin } from "@lib/supabase";
-import { verifyToken } from "@lib/auth";
+import { supabaseAdmin } from "../../../lib/supabase";
+import { verifyToken } from "../../../lib/auth";
 
 async function auth(req: NextRequest) {
   const h = req.headers.get("Authorization");
