@@ -1,6 +1,63 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -35,13 +92,11 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("users");
 
-  // Users state
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  // Faculties state
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [facLoading, setFacLoading] = useState(true);
   const [facError, setFacError] = useState("");
@@ -61,7 +116,6 @@ export default function AdminDashboard() {
     fetchFaculties();
   }, [user]);
 
-  // --- Users ---
   async function fetchUsers() {
     try {
       const res = await fetch("/api/admin/users", {
@@ -102,7 +156,6 @@ export default function AdminDashboard() {
     setSavingId(null);
   }
 
-  // --- Faculties ---
   async function fetchFaculties() {
     try {
       const res = await fetch("/api/admin/faculties", {
@@ -181,21 +234,20 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F4] flex">
-      {/* Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-black/5 bg-white px-4 py-6 hidden sm:block">
-        <div className="mb-8 px-2">
+    <div className="min-h-screen bg-[#FAF8F4]">
+      <header className="bg-white border-b border-black/5 sticky top-0 z-10">
+        <div className="px-5 sm:px-10 pt-5 pb-3">
           <span className="text-lg font-bold text-[#1B2A4A]">StudyHub</span>
           <span className="text-lg font-bold text-[#C15B3E]">AI</span>
-          <p className="text-xs text-[#1B2A4A]/50 mt-1">Admin Panel</p>
+          <span className="text-xs text-[#1B2A4A]/50 ml-2">Admin Panel</span>
         </div>
-        <nav className="space-y-1">
+        <nav className="flex gap-1 px-5 sm:px-10 overflow-x-auto pb-2">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.key}
               onClick={() => item.enabled && setActiveTab(item.key)}
               disabled={!item.enabled}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition ${
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                 activeTab === item.key
                   ? "bg-[#1B2A4A] text-white"
                   : item.enabled
@@ -205,15 +257,14 @@ export default function AdminDashboard() {
             >
               {item.label}
               {!item.enabled && (
-                <span className="ml-2 text-[10px] uppercase tracking-wide">soon</span>
+                <span className="ml-1.5 text-[10px] uppercase tracking-wide">soon</span>
               )}
             </button>
           ))}
         </nav>
-      </aside>
+      </header>
 
-      {/* Main content */}
-      <main className="flex-1 px-5 py-8 sm:px-10">
+      <main className="px-5 py-8 sm:px-10">
         <div className="max-w-5xl mx-auto">
           {activeTab === "users" && (
             <>
@@ -443,3 +494,6 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+
+
