@@ -424,6 +424,7 @@ export default function AdminDashboard() {
                 <p className="text-sm text-[#1B2A4A]/50 mt-1">
                   Approve lecturers, manage roles, and control account access.
                 </p>
+
               </div>
 
               {usersLoading && (
