@@ -58,6 +58,73 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -78,9 +145,17 @@ type Faculty = {
   description: string | null;
 };
 
+type Department = {
+  id: string;
+  name: string;
+  faculty_id: string;
+  faculties?: { name: string } | null;
+};
+
 const NAV_ITEMS = [
   { key: "users", label: "Users", enabled: true },
   { key: "faculties", label: "Faculties", enabled: true },
+  { key: "departments", label: "Departments", enabled: true },
   { key: "courses", label: "Courses", enabled: false },
   { key: "announcements", label: "Announcements", enabled: false },
 ];
@@ -107,6 +182,16 @@ export default function AdminDashboard() {
   const [editFacName, setEditFacName] = useState("");
   const [editFacDesc, setEditFacDesc] = useState("");
 
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [deptLoading, setDeptLoading] = useState(true);
+  const [deptError, setDeptError] = useState("");
+  const [newDeptName, setNewDeptName] = useState("");
+  const [newDeptFacultyId, setNewDeptFacultyId] = useState("");
+  const [creatingDept, setCreatingDept] = useState(false);
+  const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [editDeptName, setEditDeptName] = useState("");
+  const [editDeptFacultyId, setEditDeptFacultyId] = useState("");
+
   useEffect(() => {
     if (user && user.role !== "admin") {
       router.push("/");
@@ -114,6 +199,7 @@ export default function AdminDashboard() {
     }
     fetchUsers();
     fetchFaculties();
+    fetchDepartments();
   }, [user]);
 
   async function fetchUsers() {
@@ -219,6 +305,71 @@ export default function AdminDashboard() {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) await fetchFaculties();
+  }
+
+  async function fetchDepartments() {
+    try {
+      const res = await fetch("/api/admin/departments", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load departments");
+      setDepartments(data.departments);
+    } catch (err: any) {
+      setDeptError(err.message);
+    } finally {
+      setDeptLoading(false);
+    }
+  }
+
+  async function createDepartment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newDeptName.trim() || !newDeptFacultyId) return;
+    setCreatingDept(true);
+    const res = await fetch("/api/admin/departments", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: newDeptName, faculty_id: newDeptFacultyId }),
+    });
+    if (res.ok) {
+      setNewDeptName("");
+      setNewDeptFacultyId("");
+      await fetchDepartments();
+    }
+    setCreatingDept(false);
+  }
+
+  function startEditDepartment(d: Department) {
+    setEditingDeptId(d.id);
+    setEditDeptName(d.name);
+    setEditDeptFacultyId(d.faculty_id);
+  }
+
+  async function saveEditDepartment(id: string) {
+    const res = await fetch(`/api/admin/departments/${id}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: editDeptName, faculty_id: editDeptFacultyId }),
+    });
+    if (res.ok) {
+      setEditingDeptId(null);
+      await fetchDepartments();
+    }
+  }
+
+  async function deleteDepartment(id: string) {
+    if (!confirm("Delete this department permanently?")) return;
+    const res = await fetch(`/api/admin/departments/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) await fetchDepartments();
   }
 
   const statusStyles: Record<string, string> = {
@@ -489,11 +640,132 @@ export default function AdminDashboard() {
               )}
             </>
           )}
+
+          {activeTab === "departments" && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-2xl font-bold text-[#1B2A4A]">Departments</h1>
+                <p className="text-sm text-[#1B2A4A]/50 mt-1">
+                  Create and manage departments within each faculty.
+                </p>
+              </div>
+
+              <form
+                onSubmit={createDepartment}
+                className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-6 mb-6 flex flex-col sm:flex-row gap-3"
+              >
+                <input
+                  type="text"
+                  placeholder="Department name"
+                  value={newDeptName}
+                  onChange={(e) => setNewDeptName(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+                />
+                <select
+                  value={newDeptFacultyId}
+                  onChange={(e) => setNewDeptFacultyId(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+                >
+                  <option value="">Select faculty</option>
+                  {faculties.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  disabled={creatingDept || !newDeptName.trim() || !newDeptFacultyId}
+                  className="px-4 py-2 rounded-lg bg-[#1B2A4A] text-white text-sm font-medium disabled:opacity-50"
+                >
+                  {creatingDept ? "Adding..." : "Add Department"}
+                </button>
+              </form>
+
+              {deptLoading && (
+                <div className="text-[#1B2A4A]/50 text-sm">Loading departments...</div>
+              )}
+
+              {deptError && (
+                <div className="p-4 rounded-lg bg-rose-50 text-rose-700 text-sm ring-1 ring-rose-200">
+                  {deptError}
+                </div>
+              )}
+
+              {!deptLoading && !deptError && (
+                <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 divide-y divide-black/5">
+                  {departments.length === 0 && (
+                    <div className="p-6 text-sm text-[#1B2A4A]/50">
+                      No departments yet. Add one above.
+                    </div>
+                  )}
+                  {departments.map((d) => (
+                    <div key={d.id} className="p-5">
+                      {editingDeptId === d.id ? (
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <input
+                            value={editDeptName}
+                            onChange={(e) => setEditDeptName(e.target.value)}
+                            className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
+                          />
+                          <select
+                            value={editDeptFacultyId}
+                            onChange={(e) => setEditDeptFacultyId(e.target.value)}
+                            className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
+                          >
+                            {faculties.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => saveEditDepartment(d.id)}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingDeptId(null)}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <div className="font-medium text-[#1B2A4A]">{d.name}</div>
+                            <div className="text-sm text-[#1B2A4A]/50 mt-0.5">
+                              {d.faculties?.name || "Unknown faculty"}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              onClick={() => startEditDepartment(d)}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteDepartment(d.id)}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </main>
     </div>
   );
 }
-
-
-
