@@ -1,3 +1,4 @@
+cat > "app/api/admin/users/[id]/route.ts" << 'EOF'
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { verifyToken } from "@/lib/auth";
@@ -17,13 +18,14 @@ async function requireAdmin(req: NextRequest) {
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin(req);
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
   const body = await req.json();
   const allowedFields = ["status", "role"];
   const updates: Record<string, string> = {};
@@ -39,7 +41,7 @@ export async function PATCH(
   const { data, error } = await supabaseAdmin
     .from("users")
     .update(updates)
-    .eq("id", params.id)
+    .eq("id", id)
     .select()
     .single();
 
@@ -52,17 +54,19 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin(req);
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   const { error } = await supabaseAdmin
     .from("users")
     .delete()
-    .eq("id", params.id);
+    .eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -70,3 +74,4 @@ export async function DELETE(
 
   return NextResponse.json({ success: true });
 }
+EOF
