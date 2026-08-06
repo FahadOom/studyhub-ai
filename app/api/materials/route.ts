@@ -91,7 +91,8 @@ export async function POST(req: Request) {
       .from("materials")
       .insert({
         course_id: courseId,
-        uploaded_by: auth.sub,
+        
+uploaded_by: auth.id,
         title,
         description: description || null,
         type,

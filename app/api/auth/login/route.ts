@@ -29,8 +29,7 @@ export async function POST(req: Request) {
     if (user.status === "rejected") {
       return NextResponse.json({ error: "Your account application was not approved." }, { status: 403 });
     }
-
-    const token = signToken({ sub: user.id, role: user.role });
+const token = signToken({ id: user.id, email: user.email, role: user.role });
     const { password_hash, ...safeUser } = user;
 
     return NextResponse.json({ token, user: safeUser });

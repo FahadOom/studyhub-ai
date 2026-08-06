@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       year_of_study: year_of_study || null,
       semester: semester || null,
       department_id,
-      created_by: admin.sub,
+     created_by: admin.id,
     })
     .select()
     .single();

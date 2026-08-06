@@ -33,8 +33,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabaseAdmin
     .from("course_lecturers")
     .select("courses ( id, code, title )")
-    .eq("lecturer_id", auth.sub);
-
+.eq("lecturer_id", auth.id);
   if (error) {
     console.error(error);
     return NextResponse.json({ error: "Could not load courses." }, { status: 500 });

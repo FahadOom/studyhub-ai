@@ -52,8 +52,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const token = signToken({ sub: user.id, role: user.role });
-    return NextResponse.json({ token, user });
+const token = signToken({ id: user.id, email: user.email, role: user.role });    return NextResponse.json({ token, user });
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
