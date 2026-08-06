@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -32,22 +25,11 @@ type Department = {
   faculties?: { name: string } | null;
 };
 
-type Course = {
-  id: string;
-  code: string;
-  title: string;
-  description: string | null;
-  year_of_study: number | null;
-  semester: number | null;
-  department_id: string;
-  departments?: { name: string } | null;
-};
-
 const NAV_ITEMS = [
   { key: "users", label: "Users", enabled: true },
   { key: "faculties", label: "Faculties", enabled: true },
   { key: "departments", label: "Departments", enabled: true },
-  { key: "courses", label: "Courses", enabled: true },
+  { key: "courses", label: "Courses", enabled: false },
   { key: "announcements", label: "Announcements", enabled: false },
 ];
 
@@ -83,24 +65,6 @@ export default function AdminDashboard() {
   const [editDeptName, setEditDeptName] = useState("");
   const [editDeptFacultyId, setEditDeptFacultyId] = useState("");
 
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [courseLoading, setCourseLoading] = useState(true);
-  const [courseError, setCourseError] = useState("");
-  const [newCourseCode, setNewCourseCode] = useState("");
-  const [newCourseTitle, setNewCourseTitle] = useState("");
-  const [newCourseDesc, setNewCourseDesc] = useState("");
-  const [newCourseYear, setNewCourseYear] = useState("");
-  const [newCourseSemester, setNewCourseSemester] = useState("");
-  const [newCourseDeptId, setNewCourseDeptId] = useState("");
-  const [creatingCourse, setCreatingCourse] = useState(false);
-  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
-  const [editCourseCode, setEditCourseCode] = useState("");
-  const [editCourseTitle, setEditCourseTitle] = useState("");
-  const [editCourseDesc, setEditCourseDesc] = useState("");
-  const [editCourseYear, setEditCourseYear] = useState("");
-  const [editCourseSemester, setEditCourseSemester] = useState("");
-  const [editCourseDeptId, setEditCourseDeptId] = useState("");
-
   useEffect(() => {
     if (user && user.role !== "admin") {
       router.push("/");
@@ -109,7 +73,6 @@ export default function AdminDashboard() {
     fetchUsers();
     fetchFaculties();
     fetchDepartments();
-    fetchCourses();
   }, [user]);
 
   async function fetchUsers() {
@@ -280,93 +243,6 @@ export default function AdminDashboard() {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) await fetchDepartments();
-  }
-
-  async function fetchCourses() {
-    try {
-      const res = await fetch("/api/admin/courses", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load courses");
-      setCourses(data.courses);
-    } catch (err: any) {
-      setCourseError(err.message);
-    } finally {
-      setCourseLoading(false);
-    }
-  }
-
-  async function createCourse(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newCourseCode.trim() || !newCourseTitle.trim() || !newCourseDeptId) return;
-    setCreatingCourse(true);
-    const res = await fetch("/api/admin/courses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        code: newCourseCode,
-        title: newCourseTitle,
-        description: newCourseDesc,
-        year_of_study: newCourseYear ? parseInt(newCourseYear) : null,
-        semester: newCourseSemester ? parseInt(newCourseSemester) : null,
-        department_id: newCourseDeptId,
-      }),
-    });
-    if (res.ok) {
-      setNewCourseCode("");
-      setNewCourseTitle("");
-      setNewCourseDesc("");
-      setNewCourseYear("");
-      setNewCourseSemester("");
-      setNewCourseDeptId("");
-      await fetchCourses();
-    }
-    setCreatingCourse(false);
-  }
-
-  function startEditCourse(c: Course) {
-    setEditingCourseId(c.id);
-    setEditCourseCode(c.code);
-    setEditCourseTitle(c.title);
-    setEditCourseDesc(c.description || "");
-    setEditCourseYear(c.year_of_study ? String(c.year_of_study) : "");
-    setEditCourseSemester(c.semester ? String(c.semester) : "");
-    setEditCourseDeptId(c.department_id);
-  }
-
-  async function saveEditCourse(id: string) {
-    const res = await fetch(`/api/admin/courses/${id}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        code: editCourseCode,
-        title: editCourseTitle,
-        description: editCourseDesc,
-        year_of_study: editCourseYear ? parseInt(editCourseYear) : null,
-        semester: editCourseSemester ? parseInt(editCourseSemester) : null,
-        department_id: editCourseDeptId,
-      }),
-    });
-    if (res.ok) {
-      setEditingCourseId(null);
-      await fetchCourses();
-    }
-  }
-
-  async function deleteCourse(id: string) {
-    if (!confirm("Delete this course permanently?")) return;
-    const res = await fetch(`/api/admin/courses/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) await fetchCourses();
   }
 
   const statusStyles: Record<string, string> = {
@@ -748,202 +624,6 @@ export default function AdminDashboard() {
                             </button>
                             <button
                               onClick={() => deleteDepartment(d.id)}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {activeTab === "courses" && (
-            <>
-              <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#1B2A4A]">Courses</h1>
-                <p className="text-sm text-[#1B2A4A]/50 mt-1">
-                  Create and manage courses across departments.
-                </p>
-              </div>
-
-              <form
-                onSubmit={createCourse}
-                className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-6 mb-6 space-y-3"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    placeholder="Course code"
-                    value={newCourseCode}
-                    onChange={(e) => setNewCourseCode(e.target.value)}
-                    className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Course title"
-                    value={newCourseTitle}
-                    onChange={(e) => setNewCourseTitle(e.target.value)}
-                    className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
-                  />
-                  <select
-                    value={newCourseDeptId}
-                    onChange={(e) => setNewCourseDeptId(e.target.value)}
-                    className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
-                  >
-                    <option value="">Select department</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    placeholder="Year of study (optional)"
-                    value={newCourseYear}
-                    onChange={(e) => setNewCourseYear(e.target.value)}
-                    min="1"
-                    max="4"
-                    className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Semester (optional)"
-                    value={newCourseSemester}
-                    onChange={(e) => setNewCourseSemester(e.target.value)}
-                    min="1"
-                    max="2"
-                    className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
-                  />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Description (optional)"
-                  value={newCourseDesc}
-                  onChange={(e) => setNewCourseDesc(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
-                />
-                <button
-                  type="submit"
-                  disabled={creatingCourse || !newCourseCode.trim() || !newCourseTitle.trim() || !newCourseDeptId}
-                  className="w-full px-4 py-2 rounded-lg bg-[#1B2A4A] text-white text-sm font-medium disabled:opacity-50"
-                >
-                  {creatingCourse ? "Adding..." : "Add Course"}
-                </button>
-              </form>
-
-              {courseLoading && (
-                <div className="text-[#1B2A4A]/50 text-sm">Loading courses...</div>
-              )}
-
-              {courseError && (
-                <div className="p-4 rounded-lg bg-rose-50 text-rose-700 text-sm ring-1 ring-rose-200">
-                  {courseError}
-                </div>
-              )}
-
-              {!courseLoading && !courseError && (
-                <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 divide-y divide-black/5">
-                  {courses.length === 0 && (
-                    <div className="p-6 text-sm text-[#1B2A4A]/50">
-                      No courses yet. Add one above.
-                    </div>
-                  )}
-                  {courses.map((c) => (
-                    <div key={c.id} className="p-5">
-                      {editingCourseId === c.id ? (
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <input
-                              value={editCourseCode}
-                              onChange={(e) => setEditCourseCode(e.target.value)}
-                              className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
-                            />
-                            <input
-                              value={editCourseTitle}
-                              onChange={(e) => setEditCourseTitle(e.target.value)}
-                              className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
-                            />
-                            <select
-                              value={editCourseDeptId}
-                              onChange={(e) => setEditCourseDeptId(e.target.value)}
-                              className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
-                            >
-                              {departments.map((d) => (
-                                <option key={d.id} value={d.id}>
-                                  {d.name}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="number"
-                              value={editCourseYear}
-                              onChange={(e) => setEditCourseYear(e.target.value)}
-                              min="1"
-                              max="4"
-                              placeholder="Year"
-                              className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
-                            />
-                            <input
-                              type="number"
-                              value={editCourseSemester}
-                              onChange={(e) => setEditCourseSemester(e.target.value)}
-                              min="1"
-                              max="2"
-                              placeholder="Semester"
-                              className="px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
-                            />
-                          </div>
-                          <input
-                            value={editCourseDesc}
-                            onChange={(e) => setEditCourseDesc(e.target.value)}
-                            placeholder="Description"
-                            className="w-full px-3 py-2 rounded-lg border border-black/10 text-sm outline-none"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => saveEditCourse(c.id)}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingCourseId(null)}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="font-semibold text-[#1B2A4A]">{c.code} — {c.title}</div>
-                            <div className="text-sm text-[#1B2A4A]/50 mt-1">
-                              {c.departments?.name || "Unknown department"}
-                              {c.year_of_study && ` • Year ${c.year_of_study}`}
-                              {c.semester && ` • Semester ${c.semester}`}
-                            </div>
-                            {c.description && (
-                              <div className="text-sm text-[#1B2A4A]/60 mt-1.5">
-                                {c.description}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2 shrink-0">
-                            <button
-                              onClick={() => startEditCourse(c)}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteCourse(c.id)}
                               className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
                             >
                               Delete
