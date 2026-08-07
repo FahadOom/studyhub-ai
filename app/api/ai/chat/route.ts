@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { verifyToken } from "@/lib/auth";
 
 function getAuth(req: NextRequest) {
@@ -13,9 +13,7 @@ function getAuth(req: NextRequest) {
   }
 }
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: NextRequest) {
   const auth = getAuth(req);
@@ -31,19 +29,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
     const systemPrompt = context
       ? `You are a helpful study assistant. Answer the student's question based on this material context:\n\n${context}\n\nBe concise and clear.`
       : "You are a helpful study assistant. Answer the student's question clearly and concisely.";
 
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: "user", content: question }],
-    });
-
-    const textBlock = message.content.find((b) => b.type === "text");
-    const answer = textBlock && "text" in textBlock ? textBlock.text : "";
+    const result = await model.generateContent(`${systemPrompt}\n\nStudent question: ${question}`);
+    const answer = result.response.text();
 
     return NextResponse.json({ answer });
   } catch (err: any) {
