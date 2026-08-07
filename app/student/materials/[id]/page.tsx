@@ -45,6 +45,39 @@ export default function MaterialDetailPage() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
 
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiAnswer, setAiAnswer] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+
+  async function askAI(e: React.FormEvent) {
+    e.preventDefault();
+    if (!aiQuestion.trim()) return;
+    setAiLoading(true);
+    setAiError("");
+    setAiAnswer("");
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: aiQuestion,
+          context: material ? `Material: ${material.title}. ${material.description || ""}` : "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI request failed");
+      setAiAnswer(data.answer);
+    } catch (err: any) {
+      setAiError(err.message);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!materialId) return;
     fetchMaterial();
@@ -253,6 +286,36 @@ export default function MaterialDetailPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-6 mt-6">
+          <h2 className="text-sm font-semibold text-[#1B2A4A] mb-4">Ask AI about this material</h2>
+          <form onSubmit={askAI} className="flex gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Ask a question..."
+              value={aiQuestion}
+              onChange={(e) => setAiQuestion(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+            />
+            <button
+              type="submit"
+              disabled={aiLoading || !aiQuestion.trim()}
+              className="px-4 py-2 rounded-lg bg-[#C15B3E] text-white text-sm font-medium disabled:opacity-50"
+            >
+              {aiLoading ? "..." : "Ask"}
+            </button>
+          </form>
+          {aiError && (
+            <div className="p-3 rounded-lg bg-rose-50 text-rose-700 text-sm ring-1 ring-rose-200 mb-3">
+              {aiError}
+            </div>
+          )}
+          {aiAnswer && (
+            <div className="p-4 rounded-lg bg-[#1B2A4A]/[0.03] text-sm text-[#1B2A4A]/80 whitespace-pre-wrap">
+              {aiAnswer}
+            </div>
+          )}
         </div>
       </div>
     </main>
