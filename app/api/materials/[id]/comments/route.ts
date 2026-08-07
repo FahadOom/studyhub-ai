@@ -65,5 +65,23 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // Notify the material uploader (if not commenting on their own material)
+  const { data: materialData } = await supabaseAdmin
+    .from("materials")
+    .select("uploaded_by, title")
+    .eq("id", id)
+    .single();
+
+  if (materialData && materialData.uploaded_by !== auth.id) {
+    await supabaseAdmin.from("notifications").insert({
+      user_id: materialData.uploaded_by,
+      type: "comment",
+      title: "New comment on your material",
+      body: `Someone commented on "${materialData.title}"`,
+      link_url: `/student/materials/${id}`,
+      is_read: false,
+    });
+  }
+
   return NextResponse.json({ comment: data });
 }
