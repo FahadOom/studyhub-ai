@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 
+import NotificationBell from "@/components/NotificationBell";
 type Material = {
   id: string;
   title: string;
@@ -75,8 +76,12 @@ export default function StudentDashboard() {
           StudyHub<span className="text-[#C89B3C]">AI</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-[#1B2A4A]/70">{user.full_name}</span>
-          <button
+          <span className="text-sm text-[#1B2A4A]/70">
+
+<NotificationBell />
+<span className="text-sm text-[#1B2A4A]/70">{user.full_name}</span>{user.full_name}</span>
+import NotificationBell from "@/components/NotificationBell";          
+<button
             onClick={() => {
               logout();
               router.push("/");

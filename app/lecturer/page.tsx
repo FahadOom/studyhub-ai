@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
+import NotificationBell from "@/components/NotificationBell";
 export default function LecturerDashboard() {
   const router = useRouter();
   const { user, token, logout } = useAuth();
@@ -76,7 +77,8 @@ export default function LecturerDashboard() {
       <header className="flex justify-between items-center px-6 py-4 border-b border-[#1B2A4A]/10">
         <div className="font-display text-lg font-bold text-[#1B2A4A]">StudyHub AI</div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-[#1B2A4A]/70">{user?.full_name}</span>
+<NotificationBell />
+<span className="text-sm text-[#1B2A4A]/70">{user?.full_name}</span>          
           <button
             onClick={() => {
               logout();
