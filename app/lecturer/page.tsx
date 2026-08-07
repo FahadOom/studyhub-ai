@@ -42,18 +42,34 @@ export default function LecturerDashboard() {
     if (!file || !courseId) return;
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("description", description);
-      formData.append("type", type);
-      formData.append("topic", topic);
-      formData.append("courseId", courseId);
-      formData.append("file", file);
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: uploadFormData,
+      });
+
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) throw new Error(uploadData.error || "File upload failed");
 
       const res = await fetch("/api/materials", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          courseId,
+          title,
+          description,
+          type,
+          topic,
+          fileUrl: uploadData.fileUrl,
+          fileSize: uploadData.fileSize,
+          fileMime: uploadData.fileMime,
+        }),
       });
 
       if (!res.ok) throw new Error("Upload failed");
