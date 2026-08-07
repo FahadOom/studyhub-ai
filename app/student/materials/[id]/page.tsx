@@ -49,7 +49,19 @@ export default function MaterialDetailPage() {
     if (!materialId) return;
     fetchMaterial();
     fetchComments();
+    fetchLikeStatus();
   }, [materialId]);
+
+  async function fetchLikeStatus() {
+    const res = await fetch(`/api/materials/${materialId}/like`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setLiked(data.liked);
+      setLikeCount(data.count);
+    }
+  }
 
   async function fetchMaterial() {
     try {
@@ -107,10 +119,19 @@ export default function MaterialDetailPage() {
     if (res.ok) await fetchComments();
   }
 
-  function toggleLike() {
-    // Optimistic UI toggle (backend like endpoint can be added next)
-    setLiked((prev) => !prev);
-    setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+  async function toggleLike() {
+    const prevLiked = liked;
+    setLiked(!prevLiked);
+    setLikeCount((prev) => (prevLiked ? prev - 1 : prev + 1));
+
+    const res = await fetch(`/api/materials/${materialId}/like`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      setLiked(prevLiked);
+      setLikeCount((prev) => (prevLiked ? prev + 1 : prev - 1));
+    }
   }
 
   if (loading) {
