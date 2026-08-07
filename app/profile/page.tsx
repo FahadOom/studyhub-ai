@@ -19,7 +19,7 @@ type Profile = {
 };
 
 export default function ProfilePage() {
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const router = useRouter();
 
   const [profile, setProfile] = useState<Profile | null>(null);

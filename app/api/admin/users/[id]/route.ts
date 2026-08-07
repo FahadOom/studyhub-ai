@@ -48,6 +48,18 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // Notify user if their account was just activated
+  if (updates.status === "active") {
+    await supabaseAdmin.from("notifications").insert({
+      user_id: id,
+      type: "account_approved",
+      title: "Your account has been approved",
+      body: "You can now log in and use StudyHub AI.",
+      link_url: null,
+      is_read: false,
+    });
+  }
+
   return NextResponse.json({ user: data });
 }
 
