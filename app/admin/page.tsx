@@ -41,6 +41,7 @@ const NAV_ITEMS = [
   { key: "faculties", label: "Faculties", enabled: true },
   { key: "departments", label: "Departments", enabled: true },
   { key: "courses", label: "Courses", enabled: true },
+  { key: "lecturers", label: "Assign Lecturers", enabled: true },
   { key: "announcements", label: "Announcements", enabled: false },
 ];
 
@@ -98,6 +99,14 @@ export default function AdminDashboard() {
   const [editCourseSemester, setEditCourseSemester] = useState("");
   const [editCourseDeptId, setEditCourseDeptId] = useState("");
 
+  // Course-Lecturer assignment state
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [lecturers, setLecturers] = useState<any[]>([]);
+  const [assignLoading, setAssignLoading] = useState(true);
+  const [assignCourseId, setAssignCourseId] = useState("");
+  const [assignLecturerId, setAssignLecturerId] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
   useEffect(() => {
     if (user && user.role !== "admin") {
       router.push("/");
@@ -107,6 +116,7 @@ export default function AdminDashboard() {
     fetchFaculties();
     fetchDepartments();
     fetchCourses();
+    fetchAssignments();
   }, [user]);
 
   // Users functions
@@ -368,6 +378,57 @@ export default function AdminDashboard() {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) await fetchCourses();
+  }
+
+  async function fetchAssignments() {
+    try {
+      const res = await fetch("/api/admin/course-lecturers", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setAssignments(data.assignments);
+
+      const usersRes = await fetch("/api/admin/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const usersData = await usersRes.json();
+      if (usersRes.ok) {
+        setLecturers(usersData.users.filter((u: any) => u.role === "lecturer"));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAssignLoading(false);
+    }
+  }
+
+  async function createAssignment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!assignCourseId || !assignLecturerId) return;
+    setAssigning(true);
+    const res = await fetch("/api/admin/course-lecturers", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ course_id: assignCourseId, lecturer_id: assignLecturerId }),
+    });
+    if (res.ok) {
+      setAssignCourseId("");
+      setAssignLecturerId("");
+      await fetchAssignments();
+    }
+    setAssigning(false);
+  }
+
+  async function deleteAssignment(course_id: string, lecturer_id: string) {
+    if (!confirm("Remove this assignment?")) return;
+    const res = await fetch(
+      `/api/admin/course-lecturers?course_id=${course_id}&lecturer_id=${lecturer_id}`,
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (res.ok) await fetchAssignments();
   }
 
   const statusStyles: Record<string, string> = {
@@ -952,6 +1013,85 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        {activeTab === "lecturers" && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-2xl font-bold text-[#1B2A4A]">Assign Lecturers</h1>
+                <p className="text-sm text-[#1B2A4A]/50 mt-1">
+                  Assign lecturers to the courses they teach.
+                </p>
+              </div>
+
+              <form
+                onSubmit={createAssignment}
+                className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-6 mb-6 flex flex-col sm:flex-row gap-3"
+              >
+                <select
+                  value={assignCourseId}
+                  onChange={(e) => setAssignCourseId(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+                >
+                  <option value="">Select course</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} — {c.title}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={assignLecturerId}
+                  onChange={(e) => setAssignLecturerId(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+                >
+                  <option value="">Select lecturer</option>
+                  {lecturers.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.full_name} ({l.email})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  disabled={assigning || !assignCourseId || !assignLecturerId}
+                  className="px-4 py-2 rounded-lg bg-[#1B2A4A] text-white text-sm font-medium disabled:opacity-50"
+                >
+                  {assigning ? "Assigning..." : "Assign"}
+                </button>
+              </form>
+
+              {assignLoading && (
+                <div className="text-[#1B2A4A]/50 text-sm">Loading assignments...</div>
+              )}
+
+              {!assignLoading && (
+                <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 divide-y divide-black/5">
+                  {assignments.length === 0 && (
+                    <div className="p-6 text-sm text-[#1B2A4A]/50">
+                      No assignments yet. Assign one above.
+                    </div>
+                  )}
+                  {assignments.map((a: any, i: number) => (
+                    <div key={i} className="p-5 flex items-center justify-between gap-4">
+                      <div>
+                        <div className="font-medium text-[#1B2A4A]">
+                          {a.courses?.code} — {a.courses?.title}
+                        </div>
+                        <div className="text-sm text-[#1B2A4A]/50 mt-0.5">
+                          {a.users?.full_name} ({a.users?.email})
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => deleteAssignment(a.course_id, a.lecturer_id)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition shrink-0"
+                      >
+                        Remove
+                      </button>
                     </div>
                   ))}
                 </div>
