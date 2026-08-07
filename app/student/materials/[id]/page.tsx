@@ -306,12 +306,20 @@ export default function MaterialDetailPage() {
               {aiLoading ? "..." : "Ask"}
             </button>
           </form>
+          {aiLoading && (
+            <div className="flex items-center gap-2 p-4 rounded-lg bg-[#1B2A4A]/[0.03] text-sm text-[#1B2A4A]/60">
+              <span className="inline-block h-2 w-2 rounded-full bg-[#C15B3E] animate-pulse" />
+              <span className="inline-block h-2 w-2 rounded-full bg-[#C15B3E] animate-pulse" style={{ animationDelay: "0.2s" }} />
+              <span className="inline-block h-2 w-2 rounded-full bg-[#C15B3E] animate-pulse" style={{ animationDelay: "0.4s" }} />
+              <span className="ml-1">Thinking, this can take a moment on the free tier...</span>
+            </div>
+          )}
           {aiError && (
             <div className="p-3 rounded-lg bg-rose-50 text-rose-700 text-sm ring-1 ring-rose-200 mb-3">
               {aiError}
             </div>
           )}
-          {aiAnswer && (
+          {aiAnswer && !aiLoading && (
             <div className="p-4 rounded-lg bg-[#1B2A4A]/[0.03] text-sm text-[#1B2A4A]/80 whitespace-pre-wrap">
               {aiAnswer}
             </div>
