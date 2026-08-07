@@ -76,11 +76,8 @@ export default function StudentDashboard() {
           StudyHub<span className="text-[#C89B3C]">AI</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-[#1B2A4A]/70">
-
-<NotificationBell />
-<span className="text-sm text-[#1B2A4A]/70">{user.full_name}</span>{user.full_name}</span>
-import NotificationBell from "@/components/NotificationBell";          
+          <NotificationBell />
+          <span className="text-sm text-[#1B2A4A]/70">{user.full_name}</span>
 <button
             onClick={() => {
               logout();
