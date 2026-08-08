@@ -76,6 +76,9 @@ export default function StudentDashboard() {
           StudyHub<span className="text-[#C89B3C]">AI</span>
         </div>
         <div className="flex items-center gap-4">
+          <Link href="/student/courses" className="text-sm text-[#1B2A4A]/70 font-medium">
+            Browse Courses
+          </Link>
           <NotificationBell />
           <span className="text-sm text-[#1B2A4A]/70">{user.full_name}</span>
 <button
