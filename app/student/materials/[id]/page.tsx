@@ -231,21 +231,13 @@ export default function MaterialDetailPage() {
             {material.file_mime?.startsWith("video/") && (
               <video src={material.file_url} controls className="w-full" />
             )}
-            {material.file_mime === "application/pdf" && (
-              <iframe
-                src={material.file_url}
-                title={material.title}
-                className="w-full h-[70vh]"
-              />
-            )}
             {material.file_mime &&
               !material.file_mime.startsWith("image/") &&
-              !material.file_mime.startsWith("video/") &&
-              material.file_mime !== "application/pdf" && (
+              !material.file_mime.startsWith("video/") && (
                 <iframe
                   src={`https://docs.google.com/viewer?url=${encodeURIComponent(material.file_url)}&embedded=true`}
                   title={material.title}
-                  className="w-full h-[70vh]"
+                  className="w-full h-[80vh]"
                 />
               )}
           </div>
