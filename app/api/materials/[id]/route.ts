@@ -28,7 +28,7 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from("materials")
       .select(
-        `id, title, description, type, topic, file_url, file_size_bytes, view_count, download_count, created_at,
+        `id, title, description, type, topic, file_url, file_mime, file_size_bytes, view_count, download_count, created_at,
          uploaded_by, course_id,
          users:uploaded_by ( full_name ),
          courses:course_id ( code, title )`
@@ -52,6 +52,7 @@ export async function GET(
       type: data.type,
       topic: data.topic,
       file_url: data.file_url,
+      file_mime: data.file_mime,
       uploaded_by_name: (data as any).users?.full_name || "Unknown",
       course_code: (data as any).courses?.code || "",
       course_title: (data as any).courses?.title || "",

@@ -12,6 +12,7 @@ type Material = {
   type: string;
   topic: string | null;
   file_url: string;
+  file_mime?: string | null;
   course_code?: string;
   uploaded_by_name?: string;
   like_count: number;
@@ -223,13 +224,39 @@ export default function MaterialDetailPage() {
             </span>
           </div>
 
+          <div className="mb-4 rounded-lg overflow-hidden border border-black/10">
+            {material.file_mime?.startsWith("image/") && (
+              <img src={material.file_url} alt={material.title} className="w-full h-auto" />
+            )}
+            {material.file_mime?.startsWith("video/") && (
+              <video src={material.file_url} controls className="w-full" />
+            )}
+            {material.file_mime === "application/pdf" && (
+              <iframe
+                src={material.file_url}
+                title={material.title}
+                className="w-full h-[70vh]"
+              />
+            )}
+            {material.file_mime &&
+              !material.file_mime.startsWith("image/") &&
+              !material.file_mime.startsWith("video/") &&
+              material.file_mime !== "application/pdf" && (
+                <iframe
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(material.file_url)}&embedded=true`}
+                  title={material.title}
+                  className="w-full h-[70vh]"
+                />
+              )}
+          </div>
+
           <a
             href={material.file_url}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block px-4 py-2 rounded-lg bg-[#1B2A4A] text-white text-sm font-medium"
           >
-            Open Material
+            Open in New Tab / Download
           </a>
         </div>
 
