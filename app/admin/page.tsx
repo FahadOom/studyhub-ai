@@ -42,6 +42,7 @@ const NAV_ITEMS = [
   { key: "departments", label: "Departments", enabled: true },
   { key: "courses", label: "Courses", enabled: true },
   { key: "lecturers", label: "Assign Lecturers", enabled: true },
+  { key: "moderation", label: "Moderation", enabled: true },
   { key: "announcements", label: "Announcements", enabled: false },
 ];
 
@@ -100,6 +101,49 @@ export default function AdminDashboard() {
   const [editCourseDeptId, setEditCourseDeptId] = useState("");
 
   // Course-Lecturer assignment state
+  const [modMaterials, setModMaterials] = useState<any[]>([]);
+  const [modLoading, setModLoading] = useState(true);
+  const [modFlaggedOnly, setModFlaggedOnly] = useState(false);
+
+  async function fetchModMaterials(flaggedOnly = false) {
+    setModLoading(true);
+    try {
+      const url = flaggedOnly
+        ? "/api/admin/materials?flagged=true"
+        : "/api/admin/materials";
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setModMaterials(data.materials);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setModLoading(false);
+    }
+  }
+
+  async function toggleFlag(id: string, currentlyFlagged: boolean) {
+    const res = await fetch(`/api/admin/materials/${id}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ is_flagged: !currentlyFlagged }),
+    });
+    if (res.ok) await fetchModMaterials(modFlaggedOnly);
+  }
+
+  async function deleteMaterial(id: string) {
+    if (!confirm("Delete this material permanently? This cannot be undone.")) return;
+    const res = await fetch(`/api/admin/materials/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) await fetchModMaterials(modFlaggedOnly);
+  }
+
   const [assignments, setAssignments] = useState<any[]>([]);
   const [lecturers, setLecturers] = useState<any[]>([]);
   const [assignLoading, setAssignLoading] = useState(true);
