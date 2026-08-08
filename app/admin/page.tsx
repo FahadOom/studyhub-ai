@@ -1063,6 +1063,80 @@ export default function AdminDashboard() {
               )}
             </>
           )}
+        {activeTab === "moderation" && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold text-[#1B2A4A]">Content Moderation</h1>
+              <p className="text-sm text-[#1B2A4A]/50 mt-1">
+                Review and remove materials as needed.
+              </p>
+            </div>
+
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => { setModFlaggedOnly(false); fetchModMaterials(false); }}
+                className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition ${!modFlaggedOnly ? "bg-[#1B2A4A] text-white" : "bg-white text-[#1B2A4A]/70 ring-1 ring-black/5"}`}
+              >
+                All Materials
+              </button>
+              <button
+                onClick={() => { setModFlaggedOnly(true); fetchModMaterials(true); }}
+                className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition ${modFlaggedOnly ? "bg-rose-600 text-white" : "bg-white text-[#1B2A4A]/70 ring-1 ring-black/5"}`}
+              >
+                Flagged Only
+              </button>
+            </div>
+
+            {modLoading && (
+              <div className="text-[#1B2A4A]/50 text-sm">Loading materials...</div>
+            )}
+
+            {!modLoading && modMaterials.length === 0 && (
+              <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-6 text-sm text-[#1B2A4A]/50 text-center">
+                No materials found.
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 divide-y divide-black/5">
+              {modMaterials.map((m: any) => (
+                <div key={m.id} className="p-5 flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-[#1B2A4A]/50">
+                        {m.course_code} · {m.type}
+                      </span>
+                      {m.is_flagged && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">
+                          Flagged
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-semibold text-[#1B2A4A]">{m.title}</div>
+                    <div className="text-sm text-[#1B2A4A]/50 mt-0.5">
+                      {m.uploaded_by_name} ({m.uploaded_by_email})
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => toggleFlag(m.id, m.is_flagged)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition"
+                    >
+                      {m.is_flagged ? "Unflag" : "Flag"}
+                    </button>
+                    <button
+                      onClick={() => deleteMaterial(m.id)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+
         {activeTab === "lecturers" && (
             <>
               <div className="mb-8">
