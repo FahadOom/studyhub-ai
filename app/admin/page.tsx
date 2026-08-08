@@ -43,7 +43,7 @@ const NAV_ITEMS = [
   { key: "courses", label: "Courses", enabled: true },
   { key: "lecturers", label: "Assign Lecturers", enabled: true },
   { key: "moderation", label: "Moderation", enabled: true },
-  { key: "announcements", label: "Announcements", enabled: false },
+  { key: "announcements", label: "Announcements", enabled: true },
 ];
 
 const ROLE_OPTIONS = ["student", "lecturer", "admin"];
@@ -101,6 +101,56 @@ export default function AdminDashboard() {
   const [editCourseDeptId, setEditCourseDeptId] = useState("");
 
   // Course-Lecturer assignment state
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [annLoading, setAnnLoading] = useState(true);
+  const [newAnnTitle, setNewAnnTitle] = useState("");
+  const [newAnnBody, setNewAnnBody] = useState("");
+  const [postingAnn, setPostingAnn] = useState(false);
+
+  async function fetchAnnouncements() {
+    setAnnLoading(true);
+    try {
+      const res = await fetch("/api/announcements", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setAnnouncements(data.announcements);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAnnLoading(false);
+    }
+  }
+
+  async function postAnnouncement(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newAnnTitle.trim() || !newAnnBody.trim()) return;
+    setPostingAnn(true);
+    const res = await fetch("/api/announcements", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ title: newAnnTitle, announcementBody: newAnnBody }),
+    });
+    if (res.ok) {
+      setNewAnnTitle("");
+      setNewAnnBody("");
+      await fetchAnnouncements();
+    }
+    setPostingAnn(false);
+  }
+
+  async function deleteAnnouncement(id: string) {
+    if (!confirm("Delete this announcement?")) return;
+    const res = await fetch(`/api/announcements/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) await fetchAnnouncements();
+  }
+
   const [modMaterials, setModMaterials] = useState<any[]>([]);
   const [modLoading, setModLoading] = useState(true);
   const [modFlaggedOnly, setModFlaggedOnly] = useState(false);
@@ -161,6 +211,7 @@ export default function AdminDashboard() {
     fetchDepartments();
     fetchCourses();
     fetchAssignments();
+    fetchAnnouncements();
   }, [user]);
 
   // Users functions
@@ -1063,6 +1114,75 @@ export default function AdminDashboard() {
               )}
             </>
           )}
+        {activeTab === "announcements" && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold text-[#1B2A4A]">Announcements</h1>
+              <p className="text-sm text-[#1B2A4A]/50 mt-1">
+                Post platform-wide announcements. All active students get notified.
+              </p>
+            </div>
+
+            <form
+              onSubmit={postAnnouncement}
+              className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-6 mb-6 space-y-3"
+            >
+              <input
+                type="text"
+                placeholder="Announcement title"
+                value={newAnnTitle}
+                onChange={(e) => setNewAnnTitle(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+              />
+              <textarea
+                placeholder="Announcement body"
+                value={newAnnBody}
+                onChange={(e) => setNewAnnBody(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg border border-black/10 text-sm outline-none focus:ring-2 focus:ring-[#1B2A4A]/20"
+              />
+              <button
+                type="submit"
+                disabled={postingAnn || !newAnnTitle.trim() || !newAnnBody.trim()}
+                className="px-4 py-2 rounded-lg bg-[#1B2A4A] text-white text-sm font-medium disabled:opacity-50"
+              >
+                {postingAnn ? "Posting..." : "Post Announcement"}
+              </button>
+            </form>
+
+            {annLoading && (
+              <div className="text-[#1B2A4A]/50 text-sm">Loading announcements...</div>
+            )}
+
+            {!annLoading && announcements.length === 0 && (
+              <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-6 text-sm text-[#1B2A4A]/50 text-center">
+                No announcements yet.
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 divide-y divide-black/5">
+              {announcements.map((a: any) => (
+                <div key={a.id} className="p-5 flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-[#1B2A4A]">{a.title}</div>
+                    <div className="text-sm text-[#1B2A4A]/60 mt-1">{a.body}</div>
+                    <div className="text-xs text-[#1B2A4A]/40 mt-1.5">
+                      {a.posted_by_name} · {new Date(a.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => deleteAnnouncement(a.id)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition shrink-0"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+
         {activeTab === "moderation" && (
           <>
             <div className="mb-8">
